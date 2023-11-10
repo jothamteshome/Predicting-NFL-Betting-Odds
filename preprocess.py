@@ -162,28 +162,114 @@ def load_betting_data():
 
 def sql():
     # open home, away, and betting data
-    df_home = pd.read_csv("data_home.csv")
-    df_away = pd.read_csv("data_away.csv")
-    df_bet = pd.read_csv("data_betting.csv")
+    df_home = pd.read_csv("Pre-Processed Data/data_home.csv")
+    df_away = pd.read_csv("Pre-Processed Data/data_away.csv")
+    df_both = pd.concat([df_home, df_away], axis=0)
+    df_bet = pd.read_csv("Pre-Processed Data/data_betting.csv")
 
     # turn dates into datetime objects
     df_home['Date'] = pd.to_datetime(df_home['Date'])
     df_away['Date'] = pd.to_datetime(df_away['Date'])
+    df_both['Date'] = pd.to_datetime(df_both['Date'])
     df_bet['schedule_date'] = pd.to_datetime(df_bet['schedule_date'])
 
     # run sql query to put data in form we want
-    df_query = sqldf('''SELECT home.Date, home.Outcome as "home_outcome", home.Wins as "home_wins", home.Losses as "home_losses", home.Ties as "home_ties",
+    df_query2 = sqldf('''SELECT bet.schedule_season as "season", home.Date, home.Outcome as "home_outcome", home.Wins as "home_wins", home.Losses as "home_losses", home.Ties as "home_ties",
      home.Team as "home_team", bet.home_spread, home.Tm as "home_score", away.Tm as "away_score", bet.away_spread, away.Team as "away_team",
-     away.Wins as "away_wins", away.Losses as "away_losses", away.Ties as "away_ties" 
+     away.Wins as "away_wins", away.Losses as "away_losses", away.Ties as "away_ties", -(home.Tm - away.Tm) as "acutal_home_spread" 
     FROM df_home as home
-    INNER JOIN df_away as away on home.Date = away.Date and home.Team = away.OppTeam
+    INNER JOIN df_away as away on home.Date = away.Date
     INNER JOIN df_bet as bet on bet.schedule_date = home.Date and bet.team_home = home.Team and bet.team_away = away.Team
     ''')
 
+    df_query3 = sqldf('''
+    SELECT bet.schedule_season as "season", both.Date, both.Week as "week", both.Team as "team", 
+        both.Tm as "points", 
+        both.Opp as "points_against",
+        both.TotYd as "total_yards", 
+        both.OppTotYd as "total_yards_against",
+        both.PassY as "passing_yards", 
+        both.OppPassY as "passing_yards_against",
+        both.RushY as "rushing_yards", 
+        both.OppRushY as "rushing_yards_against",
+        both.FD as "first_downs", 
+        both.OppFD as "first_downs_against",
+        both.OffTO as "offense_turnovers", 
+        both.DefTO as "defense_turnovers",      
+        both.location, both.OppTeam as "opponent"
+    FROM df_both as both
+    INNER JOIN df_bet as bet on bet.schedule_date = both.Date and (bet.team_home = both.Team or bet.team_home = both.OppTeam)
+    GROUP BY season, team, week, both.Tm
+    ORDER BY season, team, week
+    ''')
+    # and bet.team_home = both.Team and bet.team_away = both.Team
     # convert date to datetime
-    df_query['Date'] = pd.to_datetime(df_query['Date'])
+    df_query3['Date'] = pd.to_datetime(df_query3['Date'])
+
+    df_query4 = sqldf('''
+    SELECT curr.season, curr.Date, curr.week, curr.team, curr.opponent, 
+        AVG(data.points) as "points_pg", 
+        AVG(data.points_against) as "points_against_pg",
+        AVG(data.total_yards) as "total_yards_pg", 
+        AVG(data.total_yards_against) as "total_yards_against_pg",
+        AVG(data.passing_yards) as "passing_yards_pg", 
+        AVG(data.passing_yards_against) as "passing_yards_against_pg",
+        AVG(data.rushing_yards) as "rushing_yards_pg", 
+        AVG(data.rushing_yards_against) as "rushing_yards_against_pg",
+        AVG(data.first_downs) as "first_downs_pg", 
+        AVG(data.first_downs_against) as "first_downs_against_pg",
+        AVG(data.offense_turnovers) as "offense_turnovers_pg", 
+        AVG(data.defense_turnovers) as "defense_turnovers_pg"
+    FROM df_query3 as curr
+    INNER JOIN df_query3 as data on data.season = curr.season and data.team = curr.team and curr.week > data.week
+    GROUP BY curr.season, curr.team, curr.week
+    ORDER BY curr.season, curr.team
+    ''')
+
+    df_query4['Date'] = pd.to_datetime(df_query4['Date'])
+
+    df_query5 = sqldf('''SELECT data.season, data.Date, home_avg.week, 
+        data.home_wins, data.home_losses, data.home_ties,
+        
+        ROUND(home_avg.points_pg, 2) as "home_points_pg", 
+        ROUND(home_avg.points_against_pg, 2) as "home_points_against_pg",
+        ROUND(home_avg.total_yards_pg,2) as "home_total_yards_pg", 
+        ROUND(home_avg.total_yards_against_pg,2) as "home_total_yards_against_pg",
+        ROUND(home_avg.passing_yards_pg,2) as "home_passing_yards_pg", 
+        ROUND(home_avg.passing_yards_against_pg,2) as "home_passing_yards_against_pg",
+        ROUND(home_avg.rushing_yards_pg,2) as "home_rushing_yards_pg", 
+        ROUND(home_avg.rushing_yards_against_pg,2) as "home_rushing_yards_against_pg",
+        ROUND(home_avg.first_downs_pg,2) as "home_first_downs_pg", 
+        ROUND(home_avg.first_downs_against_pg,2) as "home_first_downs_against_pg",
+        ROUND(home_avg.offense_turnovers_pg,2) as "home_offense_turnovers_pg", 
+        ROUND(home_avg.defense_turnovers_pg,2) as "home_defense_turnovers_pg",
+        
+        data.home_team, data.home_spread, data.home_score,
+        data.acutal_home_spread, 
+        data.away_score, data.away_spread, data.away_team,
+        data.away_wins, data.away_losses, data.away_ties, 
+        
+        ROUND(away_avg.points_pg,2) as "away_points_pg", 
+        ROUND(away_avg.points_against_pg,2) as "away_points_against_pg",
+        ROUND(away_avg.total_yards_pg,2) as "away_total_yards_pg", 
+        ROUND(away_avg.total_yards_against_pg,2) as "away_total_yards_against_pg",
+        ROUND(away_avg.passing_yards_pg,2) as "away_passing_yards_pg", 
+        ROUND(away_avg.passing_yards_against_pg,2) as "away_passing_yards_against_pg",
+        ROUND(away_avg.rushing_yards_pg,2) as "away_rushing_yards_pg", 
+        ROUND(away_avg.rushing_yards_against_pg,2) as "away_rushing_yards_against_pg",
+        ROUND(away_avg.first_downs_pg,2) as "away_first_downs_pg", 
+        ROUND(away_avg.first_downs_against_pg,2) as "away_first_downs_against_pg",
+        ROUND(away_avg.offense_turnovers_pg,2) as "away_offense_turnovers_pg", 
+        ROUND(away_avg.defense_turnovers_pg,2) as "away_defense_turnovers_pg"
+    FROM df_query2 as data
+    LEFT JOIN df_query4 as home_avg on home_avg.season = data.season and home_avg.Date = data.Date and home_avg.team = data.home_team
+    LEFT JOIN df_query4 as away_avg on away_avg.season = data.season and away_avg.Date = data.Date and away_avg.team = data.away_team
+    ''')
+    df_query5['Date'] = pd.to_datetime(df_query5['Date'])
+
+    x = 10
     # save df as csv
-    df_query.to_csv('preprocessed_data.csv', index=False)
+    df_query5.to_csv('preprocessed_additional_data.csv', index=False)
 
 
 def main():
