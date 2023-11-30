@@ -7,6 +7,8 @@ import torch.nn as nn
 import torch.optim as optim
 from sklearn.metrics import mean_squared_error, r2_score
 
+EPOCHS = 100
+
 # Define a custom neural network class for regression
 class NeuralNetwork(nn.Module):
     def __init__(self, input_dim):
@@ -18,8 +20,8 @@ class NeuralNetwork(nn.Module):
 
     def forward(self, x):
         x = torch.relu(self.fc1(x))
-        x = self.dropout(x)
         x = torch.relu(self.fc2(x))
+
         x = self.dropout(x)
         x = self.fc3(x)
         return x
@@ -32,7 +34,7 @@ def fitNeuralNetwork(X_train, y_train, epochs=100, learning_rate=0.001):
 
     for epoch in range(epochs):
         inputs = torch.tensor(X_train, dtype=torch.float32)
-        labels = torch.tensor(y_train, dtype=torch.float32)
+        labels = torch.tensor(y_train, dtype=torch.float32).view(-1, 1)  # Reshape the target tensor
 
         optimizer.zero_grad()
         outputs = model(inputs)
@@ -76,7 +78,7 @@ def regression():
     X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, train_size=0.8, random_state=47)
 
     # Fit the neural network model on training data
-    model = fitNeuralNetwork(X_train, y_train)
+    model = fitNeuralNetwork(X_train, y_train, epochs=EPOCHS)
 
     # Use the trained model to predict values
     y_pred = predictValues(model, X_test)
