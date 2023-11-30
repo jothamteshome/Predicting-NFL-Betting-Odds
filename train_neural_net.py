@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -13,10 +14,13 @@ class NeuralNetwork(nn.Module):
         self.fc1 = nn.Linear(input_dim, 64)
         self.fc2 = nn.Linear(64, 32)
         self.fc3 = nn.Linear(32, 1)
+        self.dropout = nn.Dropout(0.5)  # Add dropout layer
 
     def forward(self, x):
         x = torch.relu(self.fc1(x))
+        x = self.dropout(x)
         x = torch.relu(self.fc2(x))
+        x = self.dropout(x)
         x = self.fc3(x)
         return x
 
@@ -51,21 +55,25 @@ def evaluateRegressionModel(y_test, y_pred):
 
 def regression():
     # Read in preprocessed data
-    data = pd.read_csv('Pre-Processed Data/preprocessed_data.csv')
+    data = pd.read_csv('Pre-Processed Data/preprocessed_additional_data.csv')
 
-    # Replace outcome labels with integer labels
-    data['home_outcome'] = data['home_outcome'].replace({'L': 0, 'W': 1, 'T': 2})
+    # Drop rows with null values
+    data = data.dropna()
 
     # Split data into X and y matrices
     y = data.loc[:, 'home_spread']
-    X = data.drop(['Date', 'home_spread', 'home_team', 'away_spread', 'away_team'], axis=1)
+    X = data.drop(['Date', 'week', 'home_spread', 'home_team', 'away_spread', 'away_team'], axis=1)
+
+    # Standardize features
+    scaler = StandardScaler()
+    X_scaled = scaler.fit_transform(X)
 
     # Convert to numpy arrays (optional)
     y = y.values
-    X = X.values
+    # X_scaled = X_scaled.values
 
     # Split into training and testing set
-    X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=0.8, random_state=47)
+    X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, train_size=0.8, random_state=47)
 
     # Fit the neural network model on training data
     model = fitNeuralNetwork(X_train, y_train)

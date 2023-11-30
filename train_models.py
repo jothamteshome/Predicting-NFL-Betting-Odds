@@ -25,19 +25,19 @@ def computeRegressionAccuracy(model, X_test, y_test):
 
 def regression():
     # Read in preprocessed data
-    data = pd.read_csv('Pre-Processed Data/preprocessed_data.csv')
+    data = pd.read_csv('Pre-Processed Data/preprocessed_additional_data.csv')
 
-    # Replace outcome labels with integer labels
-    data['home_outcome'] = data['home_outcome'].replace({'L': 0, 'W': 1, 'T': 2})
+    # Drop rows with null values
+    data = data.dropna()
 
     # Split data into X and y matrices
-    y = data.loc[:,'home_spread']
-    X = data.drop(['Date', 'home_spread', 'home_team', 'away_spread', 'away_team'], axis=1)
-    
+    y = data.loc[:, 'home_spread']
+    X = data.drop(['Date', 'week', 'home_spread', 'home_team', 'away_spread', 'away_team'], axis=1)
+
     # Convert to numpy arrays (optional)
     y = y.values
     X = X.values
-    
+
     # Split into training and testing set
     X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=0.8, random_state=47)
     
