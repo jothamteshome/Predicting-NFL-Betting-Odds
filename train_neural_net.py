@@ -95,7 +95,17 @@ def evaluateRegressionModel(y_test, y_pred):
     r_squared = r2_score(y_test, y_pred)
     return mse, r_squared
 
-def regression():
+# Computes the error and residuals of the sportsbook's predictions
+def computeSportsbookResults(home_spread, acutal_home_spread):
+    # Compute mean squared error on sportsbook's predictions
+    error = mean_squared_error(acutal_home_spread, home_spread)
+
+    # Residual sum of squares of sportbook's predictions
+    residuals = r2_score(acutal_home_spread, home_spread)
+
+    return error, residuals
+
+def regression(fit_actual_spread=False):
     # Read in preprocessed data
     data = pd.read_csv('Pre-Processed Data/preprocessed_additional_data.csv')
 
@@ -103,8 +113,11 @@ def regression():
     data = data.dropna()
 
     # Split data into X and y matrices
-    y = data.loc[:, 'home_spread']
-    X = data.drop(['Date', 'week', 'home_spread', 'home_team', 'away_spread', 'away_team'], axis=1)
+    if fit_actual_spread:
+        y = data.loc[:, 'actual_home_spread']
+    else:
+        y = data.loc[:, 'home_spread']
+    X = data.drop(['Date', 'week', 'home_spread', 'home_team', 'away_spread', 'away_team', 'home_score', 'away_score', 'actual_home_spread'], axis=1)
 
     # Standardize features
     scaler = StandardScaler()
@@ -138,14 +151,36 @@ def regression():
     # Evaluate the model on testing
     mse_test, r_squared_test = evaluateRegressionModel(y_test, y_pred)
 
-    return mse_train, r_squared_train,mse_test, r_squared_test
+    book_error, book_residual = 0, 0
+    if fit_actual_spread:
+        # Grab sportsbook's home spread and the actual home spread from the result of the games
+        home_spread = data.loc[:, 'home_spread']
+        actual_home_spread = data.loc[:, 'actual_home_spread']
+
+        # Convert to numpy arrays (optional)
+        home_spread = home_spread.values[:900]
+        actual_home_spread = actual_home_spread.values[:900]
+
+        book_error, book_residual = computeSportsbookResults(home_spread, actual_home_spread)
+
+    return mse_train, r_squared_train,mse_test, r_squared_test, book_error, book_residual
 
 def main():
-    mse_train, r_squared_train, mse_test, r_squared_test = regression()
+    print('Predicting Spread\n')
+    mse_train, r_squared_train, mse_test, r_squared_test, book_error, book_residual = regression()
     print("Training Mean Squared Error:", mse_train)
     print("Training R-squared (R²):", r_squared_train)
     print("Testing Mean Squared Error:", mse_test)
     print("Testing R-squared (R²):", r_squared_test)
+
+    print('\n\nPredicting Point Differential\n')
+    mse_train, r_squared_train, mse_test, r_squared_test, book_error, book_residual = regression(fit_actual_spread=True)
+    print("Training Mean Squared Error:", mse_train)
+    print("Training R-squared (R²):", r_squared_train)
+    print("Testing Mean Squared Error:", mse_test)
+    print("Testing R-squared (R²):", r_squared_test)
+    print("Sportsbook's Mean Square Error: ", book_error)
+    print("Sportsbook's R-squared (R²):", book_residual)
 
 if __name__ == "__main__":
     main()
