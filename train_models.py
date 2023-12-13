@@ -1,25 +1,41 @@
 import numpy as np
-from sklearn.linear_model import Ridge, LinearRegression
-from sklearn.ensemble import RandomForestRegressor
+from sklearn.linear_model import Ridge, LinearRegression, Lasso
+from sklearn.ensemble import RandomForestRegressor, VotingRegressor
+from sklearn.svm import SVR
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error
 import pandas as pd
 
 # Fits the regression model
 def fitRidgeRegressionModel(X_train, y_train):
-    model = Ridge(alpha=0.001, random_state=47)
+    model = Ridge(alpha=0.001, random_state=47, solver='lsqr')
     model.fit(X_train, y_train)
 
     return model
 
+def fitLassoRegressionModel(X_train, y_train):
+    model = Lasso(0.8, random_state=47, max_iter=5000)
+    model.fit(X_train, y_train)
+
+    return model
+
+# Fit a base linear regression model
 def fitLinearRegressionModel(X_train, y_train):
     model = LinearRegression()
     model.fit(X_train, y_train)
 
     return model
 
+# Fit a random forest regression model
 def fitRandomForest(X_train, y_train):
-    model = RandomForestRegressor(n_estimators=100, random_state=47)
+    model = RandomForestRegressor(n_estimators=150, random_state=47)
+    model.fit(X_train, y_train)
+
+    return model
+
+# Fit supoort vector regression model
+def fitSVM(X_train, y_train):
+    model = SVR(C=0.9, epsilon=0.01, kernel='linear')
     model.fit(X_train, y_train)
 
     return model
@@ -69,13 +85,23 @@ def regression():
     
     # Fit the models on training data
     linRegression = fitLinearRegressionModel(X_train, y_train)
+    lassoRegression = fitLassoRegressionModel(X_train, y_train)
     ridgeRegression = fitRidgeRegressionModel(X_train, y_train)
     randomForest = fitRandomForest(X_train, y_train)
+    svm = fitSVM(X_train, y_train)
+    ensembleRegression = VotingRegressor(estimators=[('linR', linRegression), ('lasR', lassoRegression),
+                                                     ('ridR', ridgeRegression), ('rfR', randomForest),
+                                                     ('svr', svm)])
+    
+    ensembleRegression.fit(X_train, y_train)
 
     # Compute results for each model type
     modelResults = {'Linear Regression': computeModelResults(linRegression, X_test, y_test),
+                    'Lasso Regression': computeModelResults(lassoRegression, X_test, y_test),
                     'Ridge Regression': computeModelResults(ridgeRegression, X_test, y_test),
-                    'Random Forest': computeModelResults(randomForest, X_test, y_test)}
+                    'Random Forest': computeModelResults(randomForest, X_test, y_test),
+                    'SVM': computeModelResults(svm, X_test, y_test),
+                    'Voting': computeModelResults(ensembleRegression, X_test, y_test)}
 
     for result in modelResults:
         print(f"{result}\n{'-'*25}\nMSE: {modelResults[result][0]}\nR^2: {modelResults[result][1]}\n\n")
