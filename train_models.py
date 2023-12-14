@@ -14,7 +14,7 @@ def fitRidgeRegressionModel(X_train, y_train):
     return model
 
 def fitLassoRegressionModel(X_train, y_train):
-    model = Lasso(0.8, random_state=47, max_iter=5000)
+    model = Lasso(0.01, random_state=47, max_iter=5000)
     model.fit(X_train, y_train)
 
     return model
@@ -28,14 +28,14 @@ def fitLinearRegressionModel(X_train, y_train):
 
 # Fit a random forest regression model
 def fitRandomForest(X_train, y_train):
-    model = RandomForestRegressor(n_estimators=150, random_state=47)
+    model = RandomForestRegressor(n_estimators=500, random_state=47)
     model.fit(X_train, y_train)
 
     return model
 
 # Fit supoort vector regression model
 def fitSVM(X_train, y_train):
-    model = SVR(C=0.9, epsilon=0.01, kernel='linear')
+    model = SVR(C=0.001, epsilon=0.001, kernel='linear')
     model.fit(X_train, y_train)
 
     return model
@@ -102,9 +102,17 @@ def regression():
                     'Random Forest': computeModelResults(randomForest, X_test, y_test),
                     'SVM': computeModelResults(svm, X_test, y_test),
                     'Voting': computeModelResults(ensembleRegression, X_test, y_test)}
+    
+    with open('Linear Model Results.txt', 'a') as f:
+        print(f"{'Model Type'.center(20)}|{'MSE'.center(20)}|{'R-squared'.center(20)}")
+        f.write(f"{'Model Type'.center(20)}|{'MSE'.center(20)}|{'R-squared'.center(20)}\n")
 
-    for result in modelResults:
-        print(f"{result}\n{'-'*25}\nMSE: {modelResults[result][0]}\nR^2: {modelResults[result][1]}\n\n")
+        for result in modelResults:
+            error, residuals = round(modelResults[result][0], 2), round(modelResults[result][1], 3)
+            print(f"{result.center(20)}|{str(error).center(20)}|{str(residuals).center(20)}")
+            f.write(f"{result.center(20)}|{str(error).center(20)}|{str(residuals).center(20)}\n")
+        
+        f.write(f"\n{'-'*100}\n")
 
     
 def main():
