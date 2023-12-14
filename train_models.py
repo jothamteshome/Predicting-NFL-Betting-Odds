@@ -28,7 +28,7 @@ def fitLinearRegressionModel(X_train, y_train):
 
 # Fit a random forest regression model
 def fitRandomForest(X_train, y_train):
-    model = RandomForestRegressor(n_estimators=500, random_state=47)
+    model = RandomForestRegressor(n_estimators=200, random_state=47)
     model.fit(X_train, y_train)
 
     return model
