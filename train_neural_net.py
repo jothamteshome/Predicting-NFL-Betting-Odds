@@ -6,49 +6,45 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from sklearn.metrics import mean_squared_error, r2_score
+import matplotlib.pyplot as plt
 
-EPOCHS = 300
+EPOCHS = 1000
 
 # Define a custom neural network class for regression
 class NeuralNetwork(nn.Module):
-    def __init__(self, input_dim):
+    def __init__(self, input_dim, hidden_sizes, output_dim, dropouts):
         super(NeuralNetwork, self).__init__()
-        self.fc1 = nn.Linear(input_dim, 256)
-        self.fc2 = nn.Linear(256, 128)
-        self.fc3 = nn.Linear(128, 64)
-        self.fc4 = nn.Linear(64, 32)
-        self.fc5 = nn.Linear(32, 16)
-        self.fc6 = nn.Linear(16, 8)
-        self.fc7 = nn.Linear(8, 1)
-        self.dropout1 = nn.Dropout(0.5)
-        self.dropout2 = nn.Dropout(0.4)
-        self.dropout3 = nn.Dropout(0.3)
-        self.dropout4 = nn.Dropout(0.2)
-        self.dropout5 = nn.Dropout(0.1)
+
+        self.layers = nn.ModuleList()
+        in_size = input_dim
+
+        for out_size, dropout_rate in zip(hidden_sizes, dropouts):
+            self.layers.append(nn.Linear(in_size, out_size))
+            self.layers.append(nn.ReLU())
+            self.layers.append(nn.Dropout(dropout_rate))
+            in_size = out_size
+
+        self.layers.append(nn.Linear(in_size, output_dim))
 
     def forward(self, x):
-        x = torch.relu(self.fc1(x))
-        x = self.dropout1(x)
-        x = torch.relu(self.fc2(x))
-        x = self.dropout2(x)
-        x = torch.relu(self.fc3(x))
-        x = self.dropout3(x)
-        x = torch.relu(self.fc4(x))
-        x = self.dropout4(x)
-        x = torch.relu(self.fc5(x))
-        x = self.dropout5(x)
-        x = torch.relu(self.fc6(x))
-        x = self.fc7(x)
+        for layer in self.layers:
+            x = layer(x)
         return x
 
 
 def fitNeuralNetwork(X_train, y_train, X_val, y_val, epochs=1000, learning_rate=0.001):
-    model = NeuralNetwork(X_train.shape[1])
+    hidden_sizes = [512, 256, 128, 64, 32, 16, 8]
+    output_dim = 1
+    dropouts = [0.5 ,0.25, 0.125, 0.1, 0.0625, 0.03, 0.0]
+    model = NeuralNetwork(X_train.shape[1], hidden_sizes, output_dim, dropouts)
     criterion = nn.MSELoss()  # Mean squared error loss
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
     prev_val_loss = float('inf')
     patience = 20  # Number of epochs to wait for improvement
+
+    train_losses = []
+    val_losses = []
 
     for epoch in range(epochs):
         inputs = torch.tensor(X_train, dtype=torch.float32)
@@ -77,6 +73,12 @@ def fitNeuralNetwork(X_train, y_train, X_val, y_val, epochs=1000, learning_rate=
             if patience_counter >= patience:
                 print(f"Early stopping at epoch {epoch}.")
                 break
+
+        # Append training and validation losses
+        train_losses.append(loss.item())
+        val_losses.append(val_loss.item())
+
+    plot_performance(train_losses, val_losses, 'Training and Validation Loss')
 
     # Load the best model state
     model.load_state_dict(best_model_state)
@@ -164,6 +166,16 @@ def regression(fit_actual_spread=False):
         book_error, book_residual = computeSportsbookResults(home_spread, actual_home_spread)
 
     return mse_train, r_squared_train,mse_test, r_squared_test, book_error, book_residual
+
+def plot_performance(train_loss, val_loss, title):
+    plt.figure(figsize=(10, 6))
+    plt.plot(train_loss, label='Training Loss')
+    plt.plot(val_loss, label='Validation Loss')
+    plt.title(title)
+    plt.xlabel('Epoch')
+    plt.ylabel('Loss')
+    plt.legend()
+    plt.show()
 
 def main():
     print('Predicting Spread\n')
