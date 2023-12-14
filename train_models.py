@@ -3,7 +3,7 @@ from sklearn.linear_model import Ridge, LinearRegression, Lasso
 from sklearn.ensemble import RandomForestRegressor, VotingRegressor
 from sklearn.svm import SVR
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import mean_squared_error
+from sklearn.metrics import mean_squared_error, r2_score
 import pandas as pd
 
 # Fits the regression model
@@ -65,7 +65,17 @@ def computeModelResults(model, X_test, y_test):
 
     return error, residuals
 
-def regression():
+# Computes the error and residuals of the sportsbook's predictions
+def computeSportsbookResults(home_spread, acutal_home_spread):
+    # Compute mean squared error on sportsbook's predictions
+    error = computeMSE(home_spread, acutal_home_spread)
+
+    # Residual sum of squares of sportbook's predictions
+    residuals = r2_score(acutal_home_spread, home_spread)
+
+    return error, residuals
+
+def regression(fit_actual_spread=False):
     # Read in preprocessed data
     data = pd.read_csv('Pre-Processed Data/preprocessed_additional_data.csv')
 
@@ -73,8 +83,11 @@ def regression():
     data = data.dropna()
 
     # Split data into X and y matrices
-    y = data.loc[:, 'home_spread']
-    X = data.drop(['Date', 'week', 'home_spread', 'home_team', 'away_spread', 'away_team'], axis=1)
+    if fit_actual_spread:
+        y = data.loc[:, 'actual_home_spread']
+    else:
+        y = data.loc[:, 'home_spread']
+    X = data.drop(['Date', 'week', 'home_spread', 'home_team', 'away_spread', 'away_team', 'home_score', 'away_score', 'actual_home_spread'], axis=1)
 
     # Convert to numpy arrays (optional)
     y = y.values
@@ -114,9 +127,24 @@ def regression():
         
         f.write(f"\n{'-'*100}\n")
 
-    
+    if fit_actual_spread:
+        # Grab sportsbook's home spread and the actual home spread from the result of the games
+        home_spread = data.loc[:, 'home_spread']
+        actual_home_spread = data.loc[:, 'actual_home_spread']
+
+        # Convert to numpy arrays (optional)
+        home_spread = home_spread.values
+        actual_home_spread = actual_home_spread.values
+
+        book_error, book_residual = computeSportsbookResults(home_spread, actual_home_spread)
+        print(f"Sportsbook's Prediction\n{'-' * 25}\nMSE: {book_error}\nR^2: {book_residual}\n\n")
+
+
 def main():
+    print('Predicting Spread')
     regression()
+    print('Predicting Point Differential\n')
+    regression(fit_actual_spread=True)
     
 
 
