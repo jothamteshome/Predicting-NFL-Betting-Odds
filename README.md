@@ -1,0 +1,3 @@
+# Predicting NFL Betting Odds
+
+In this project, we aim to predict the points spread of an NFL game using many different factors, including home and away team records and average per game metrics. To make these predictions effectively, we tested various regression models, including linear regression, ridge regression, lasso regression, random forest regression, voting regression, support vector regression, and a neural network. We believe training all of these various models will give us better insight into where we can improve model performance by introducing a different feature set, as well as being able to compare the accuracy of a purely linear model with a non-linear model.
